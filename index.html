@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Avisos - Droguería DM</title>
+<style>
+  :root {
+    --bg: #f5f5f3; --surface: #ffffff; --text: #1d1d1b; --muted: #6b6b66;
+    --border: #d9d9d4; --urgent: #c0392b; --urgent-bg: #fdecea;
+    --warn: #b9770e; --warn-bg: #fef5e7; --info: #1f618d; --info-bg: #eaf2f8;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161614; --surface: #22221f; --text: #f0f0ec; --muted: #9a9a94;
+      --border: #3a3a35; --urgent: #ff7b6b; --urgent-bg: #3a2420;
+      --warn: #f5b041; --warn-bg: #3a3020; --info: #7fb3d5; --info-bg: #1f2d38;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: env(safe-area-inset-top, 0px) 16px env(safe-area-inset-bottom, 0px);
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 16px 0 40px; }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 16px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px; margin-bottom: 16px;
+  }
+  .card h2 { font-size: 1rem; margin: 0 0 10px; }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 8px; }
+  input, select, textarea {
+    width: 100%; margin-top: 4px; padding: 8px; font: inherit;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+  }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 480px) { .row { grid-template-columns: 1fr; } }
+  button {
+    font: inherit; padding: 8px 14px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  }
+  button.primary { background: var(--info); color: #fff; border-color: var(--info); }
+  .err { color: var(--urgent); font-size: 0.85rem; min-height: 1.2em; margin-top: 6px; }
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .filters button.active { background: var(--text); color: var(--surface); }
+  .aviso {
+    border: 1px solid var(--border); border-left-width: 5px;
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: var(--surface);
+  }
+  .aviso.urgente { border-left-color: var(--urgent); background: var(--urgent-bg); }
+  .aviso.nofacturar { border-left-color: var(--warn); background: var(--warn-bg); }
+  .aviso.entrega { border-left-color: var(--info); background: var(--info-bg); }
+  .aviso.info { border-left-color: var(--muted); }
+  .aviso.remitos { border-left-color: #1e8449; background: var(--surface); }
+  .aviso.armado { border-left-color: #8e44ad; background: var(--surface); }
+  #mini .mini-item.armado { border-left-color: #8e44ad; }
+  .rapido { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+  .rapido label { flex: 1; min-width: 180px; margin-bottom: 0; }
+  #mini .mini-item.remitos { border-left-color: #1e8449; }
+  .meta { font-size: 0.78rem; color: var(--muted); margin-bottom: 4px; }
+  .tipo { font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.04em; }
+  .texto { font-size: 1rem; margin: 2px 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .acciones { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .vence { font-size: 0.8rem; color: var(--muted); }
+  .vacio { color: var(--muted); text-align: center; padding: 20px 0; }
+  .mini-toggle { margin-bottom: 12px; }
+  #mini {
+    position: fixed; right: 12px; bottom: 12px; width: 270px; z-index: 50;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15); padding: 8px; font-size: 0.8rem;
+    display: none;
+  }
+  #mini.visible { display: block; }
+  #mini .mini-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-weight: 600; }
+  #mini .mini-head button { padding: 2px 8px; font-size: 0.75rem; }
+  #mini .mini-item { border-left: 4px solid var(--muted); padding: 4px 8px; margin-bottom: 6px; background: var(--bg); border-radius: 4px; }
+  #mini .mini-item.urgente { border-left-color: var(--urgent); }
+  #mini .mini-item.nofacturar { border-left-color: var(--warn); }
+  #mini .mini-item.entrega { border-left-color: var(--info); }
+  #mini .mini-texto { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  #mini .mini-vence { color: var(--muted); font-size: 0.72rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Avisos del día</h1>
+  <div class="sub">Ventas, depósito y administración. Lo urgente aparece primero.</div>
+  <button class="mini-toggle" id="btnMini">Mostrar panel mini</button>
+  <button class="mini-toggle" id="btnSonido">Activar sonido y notificaciones</button>
+  <button class="mini-toggle" id="btnFlotante">Ventana flotante (Chrome o Edge)</button>
+
+  <div class="card">
+    <h2>Publicar aviso</h2>
+    <div class="row">
+      <label>Quién avisa
+        <select id="autor">
+          <option>Ventas</option>
+          <option>Depósito</option>
+          <option>Administración</option>
+        </select>
+      </label>
+      <label>Tipo
+        <select id="tipo">
+          <option value="urgente">Urgente</option>
+          <option value="nofacturar">No facturar</option>
+          <option value="entrega">Entrega</option>
+          <option value="remitos">Remitos largados</option>
+          <option value="info">Informativo</option>
+        </select>
+      </label>
+    </div>
+    <label>Mensaje
+      <textarea id="texto" rows="5" maxlength="1000" placeholder="Ej: Farmacia Sur necesita azitro hoy. Si no hay stock, avisar a ventas antes de las 12hs."></textarea>
+      <span class="vence" id="contador">0 / 1000</span>
+    </label>
+    <label>Vence
+      <input type="datetime-local" id="vence">
+    </label>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+      <div class="err" id="error"></div>
+      <button class="primary" id="publicar">Publicar</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Pedido armado</h2>
+    <div class="rapido">
+      <label>Cliente
+        <input type="text" id="cliente" maxlength="80" placeholder="Ej: Farmacia Sur">
+      </label>
+      <button class="primary" id="avisarArmado">Avisar a ventas</button>
+    </div>
+    <div class="err" id="errorArmado"></div>
+  </div>
+
+  <div class="filters" id="filtros">
+    <button data-f="todos" class="active">Todos</button>
+    <button data-f="urgente">Urgentes</button>
+    <button data-f="nofacturar">No facturar</button>
+    <button data-f="entrega">Entregas</button>
+    <button data-f="armado">Armados</button>
+    <button data-f="remitos">Remitos</button>
+    <button data-f="info">Info</button>
+  </div>
+
+  <div id="lista"></div>
+</div>
+
+<div id="mini">
+  <div class="mini-head">
+    <span>Avisos</span>
+    <button id="cerrarMini">Ocultar</button>
+  </div>
+  <div id="miniLista"></div>
+</div>
+
+<script>
+  const API_URL = "https://script.google.com/macros/s/AKfycbxUmUcUha7LIDUqHPd7iemmRPrsmOINCGHfExN_-QSafKXzJ_58Da_bgBYVDurYDSsW/exec";
+
+  const ETIQUETAS = {
+    urgente: "Urgente",
+    nofacturar: "No facturar",
+    armado: "Pedido armado",
+    entrega: "Entrega",
+    remitos: "Remitos largados",
+    info: "Informativo"
+  };
+  const ORDEN = { urgente: 0, nofacturar: 1, armado: 2, entrega: 3, remitos: 4, info: 5 };
+
+  let avisos = [];
+  let filtro = "todos";
+  let primeraCarga = true;
+  let audioCtx = null;
+  let sonidoActivo = false;
+
+  function ahoraMas(horas) {
+    return new Date(Date.now() + horas * 3600 * 1000);
+  }
+
+  function formatearFecha(d) {
+    return d.toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  }
+
+  function beep() {
+    if (!sonidoActivo || !audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.frequency.value = 880;
+    gain.gain.value = 0.2;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.4);
+  }
+
+  function notificar(a) {
+    beep();
+    if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
+      new Notification("Nuevo aviso (" + a.autor + ")", { body: a.texto });
+    }
+  }
+
+  async function enviar(datos) {
+    await fetch(API_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(datos)
+    });
+  }
+
+  async function cargarAvisos() {
+    try {
+      const resp = await fetch(API_URL);
+      const datos = await resp.json();
+      const conocidos = new Set(avisos.map(a => a.id));
+      const nuevos = datos.map(a => ({
+        id: String(a.id),
+        autor: a.autor,
+        tipo: a.tipo,
+        texto: a.texto,
+        creado: new Date(a.creado),
+        vence: new Date(a.vence)
+      }));
+      if (!primeraCarga) {
+        nuevos.filter(a => !conocidos.has(a.id)).forEach(notificar);
+      }
+      primeraCarga = false;
+      avisos = nuevos;
+      render();
+    } catch (e) {
+      document.getElementById("lista").innerHTML = '<div class="vacio">No se pudo conectar con la planilla.</div>';
+    }
+  }
+
+  async function publicarAviso({ autor, tipo, texto, vence }) {
+    const aviso = {
+      id: String(Date.now()) + String(Math.floor(Math.random() * 1000)),
+      autor, tipo, texto, vence,
+      creado: new Date()
+    };
+    avisos.push(aviso);
+    render();
+    notificar(aviso);
+    await enviar({
+      accion: "publicar",
+      id: aviso.id,
+      autor, tipo, texto,
+      creado: aviso.creado.toISOString(),
+      vence: vence.toISOString()
+    });
+  }
+
+  async function marcarResuelto(id) {
+    avisos = avisos.filter(a => a.id !== id);
+    render();
+    await enviar({ accion: "resolver", id });
+  }
+
+  function vigentes() {
+    const ahora = new Date();
+    return avisos
+      .filter(a => a.vence > ahora)
+      .filter(a => filtro === "todos" || a.tipo === filtro)
+      .sort((a, b) => (ORDEN[a.tipo] - ORDEN[b.tipo]) || (a.vence - b.vence));
+  }
+
+  function renderMini() {
+    const cont = document.getElementById("miniLista");
+    const top = vigentes().slice(0, 3);
+    if (top.length === 0) {
+      cont.innerHTML = '<div class="mini-vence">Sin avisos vigentes.</div>';
+      return;
+    }
+    cont.innerHTML = "";
+    top.forEach(a => {
+      const div = document.createElement("div");
+      div.className = "mini-item " + a.tipo;
+      div.innerHTML = `<div class="mini-texto"></div><div class="mini-vence">${ETIQUETAS[a.tipo]} · vence ${formatearFecha(a.vence)}</div>`;
+      div.querySelector(".mini-texto").textContent = a.texto;
+      cont.appendChild(div);
+    });
+  }
+
+  function render() {
+    renderMini();
+    const cont = document.getElementById("lista");
+    const lista = vigentes();
+    if (lista.length === 0) {
+      cont.innerHTML = '<div class="vacio">No hay avisos vigentes.</div>';
+      return;
+    }
+    cont.innerHTML = "";
+    lista.forEach(a => {
+      const div = document.createElement("div");
+      div.className = "aviso " + a.tipo;
+      div.innerHTML = `
+        <div class="meta"><span class="tipo">${ETIQUETAS[a.tipo]}</span> · ${a.autor} · ${formatearFecha(a.creado)}</div>
+        <div class="texto"></div>
+        <div class="acciones">
+          <span class="vence">Vence ${formatearFecha(a.vence)}</span>
+          <button data-resolver="${a.id}">Resuelto</button>
+        </div>`;
+      div.querySelector(".texto").textContent = a.texto;
+      cont.appendChild(div);
+    });
+  }
+
+  document.getElementById("publicar").addEventListener("click", () => {
+    const texto = document.getElementById("texto").value.trim();
+    const venceVal = document.getElementById("vence").value;
+    const err = document.getElementById("error");
+    if (!texto) { err.textContent = "Escribí el mensaje."; return; }
+    if (!venceVal) { err.textContent = "Elegí fecha de vencimiento."; return; }
+    const vence = new Date(venceVal);
+    if (vence <= new Date()) { err.textContent = "La fecha de vencimiento ya pasó."; return; }
+    publicarAviso({
+      autor: document.getElementById("autor").value,
+      tipo: document.getElementById("tipo").value,
+      texto,
+      vence
+    });
+    document.getElementById("texto").value = "";
+    document.getElementById("vence").value = "";
+    err.textContent = "";
+  });
+
+  document.getElementById("avisarArmado").addEventListener("click", () => {
+    const cliente = document.getElementById("cliente").value.trim();
+    const err = document.getElementById("errorArmado");
+    if (!cliente) { err.textContent = "Escribí el nombre del cliente."; return; }
+    publicarAviso({
+      autor: "Depósito",
+      tipo: "armado",
+      texto: `Pedido armado para ${cliente}. Ventas: ya podés largar el remito o la factura.`,
+      vence: ahoraMas(8)
+    });
+    document.getElementById("cliente").value = "";
+    err.textContent = "";
+  });
+
+  document.getElementById("texto").addEventListener("input", e => {
+    document.getElementById("contador").textContent = e.target.value.length + " / 1000";
+  });
+
+  document.getElementById("lista").addEventListener("click", e => {
+    const id = e.target.getAttribute("data-resolver");
+    if (id) marcarResuelto(id);
+  });
+
+  document.getElementById("filtros").addEventListener("click", e => {
+    const f = e.target.getAttribute("data-f");
+    if (!f) return;
+    filtro = f;
+    document.querySelectorAll("#filtros button").forEach(b => b.classList.toggle("active", b === e.target));
+    render();
+  });
+
+  document.getElementById("btnMini").addEventListener("click", () => {
+    document.getElementById("mini").classList.add("visible");
+    renderMini();
+  });
+
+  document.getElementById("btnSonido").addEventListener("click", async () => {
+    const btn = document.getElementById("btnSonido");
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+    sonidoActivo = true;
+    if ("Notification" in window && Notification.permission === "default") {
+      await Notification.requestPermission();
+    }
+    beep();
+    btn.textContent = "Sonido y notificaciones activados";
+  });
+
+  document.getElementById("btnFlotante").addEventListener("click", async () => {
+    if (!("documentPictureInPicture" in window)) {
+      alert("Esta función necesita Chrome o Edge en la computadora.");
+      return;
+    }
+    const pipWin = await documentPictureInPicture.requestWindow({ width: 300, height: 380 });
+    document.querySelectorAll("style").forEach(s => pipWin.document.head.appendChild(s.cloneNode(true)));
+    const mini = document.getElementById("mini");
+    mini.classList.add("visible");
+    mini.style.position = "static";
+    mini.style.width = "100%";
+    mini.style.boxShadow = "none";
+    pipWin.document.body.style.margin = "0";
+    pipWin.document.body.append(mini);
+    renderMini();
+    pipWin.addEventListener("pagehide", () => {
+      mini.style.cssText = "";
+      mini.classList.remove("visible");
+      document.body.appendChild(mini);
+    });
+  });
+
+  document.getElementById("cerrarMini").addEventListener("click", () => {
+    document.getElementById("mini").classList.remove("visible");
+  });
+
+  // Carga los avisos de la planilla y busca novedades cada minuto
+  cargarAvisos();
+  setInterval(cargarAvisos, 60 * 1000);
+  // Refresca la vista para que los avisos vencidos desaparezcan solos
+  setInterval(render, 60 * 1000);
+</script>
+</body>
+</html>
